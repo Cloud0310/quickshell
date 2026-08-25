@@ -73,6 +73,8 @@ class WlSessionLock: public Reloadable {
 
 public:
 	explicit WlSessionLock(QObject* parent = nullptr): Reloadable(parent) {}
+	~WlSessionLock() override;
+	Q_DISABLE_COPY_MOVE(WlSessionLock);
 
 	void onReload(QObject* oldInstance) override;
 
