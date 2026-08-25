@@ -101,6 +101,8 @@ private:
 	QQmlComponent* mSurfaceComponent = nullptr;
 	QMap<QScreen*, WlSessionLockSurface*> surfaces;
 	bool lockTarget = false;
+	bool realizing = false;
+	bool awaitingRealization = false;
 
 	friend class WlSessionLockSurface;
 };
