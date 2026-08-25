@@ -160,8 +160,9 @@ void NetworkManager::registerDevice(const QString& path) {
 			} else {
 				qCDebug(logNetworkManager) << "Ignoring registration of unsupported device:" << path;
 			}
-			temp->deleteLater();
 		}
+
+		temp->deleteLater();
 	};
 
 	qs::dbus::asyncReadProperty<uint>(*temp, "DeviceType", callback);

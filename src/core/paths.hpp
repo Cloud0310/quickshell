@@ -5,6 +5,7 @@
 #include <qdatetime.h>
 #include <qdir.h>
 #include <qpair.h>
+#include <qfile.h>
 #include <qtypes.h>
 
 #include "instanceinfo.hpp"
@@ -75,4 +76,5 @@ private:
 	QString shellDataOverride;
 	QString shellStateOverride;
 	QString shellCacheOverride;
+	QFile instanceLock;
 };

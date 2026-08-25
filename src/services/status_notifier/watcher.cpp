@@ -74,19 +74,21 @@ void StatusNotifierWatcher::onServiceUnregistered(const QString& service) {
 		this->tryRegister();
 		return;
 	} else {
-		QString qualifiedItem;
+		QList<QString> unregisteredItems;
 		this->items.removeIf([&](const QString& item) {
 			if (item.startsWith(service)) {
-				qualifiedItem = item;
+				unregisteredItems.push_back(item);
 				return true;
 			} else return false;
 		});
 
-		if (!qualifiedItem.isEmpty()) {
-			qCDebug(logStatusNotifierWatcher).noquote()
-			    << "Unregistered StatusNotifierItem" << qualifiedItem << "from watcher";
+		if (!unregisteredItems.isEmpty()) {
+			for (const auto& item: unregisteredItems) {
+				qCDebug(logStatusNotifierWatcher).noquote()
+				    << "Unregistered StatusNotifierItem" << item << "from watcher";
 
-			emit this->StatusNotifierItemUnregistered(qualifiedItem);
+				emit this->StatusNotifierItemUnregistered(item);
+			}
 		} else if (this->hosts.removeAll(service) != 0) {
 			qCDebug(logStatusNotifierWatcher).noquote()
 			    << "Unregistered StatusNotifierHost" << service << "from watcher";

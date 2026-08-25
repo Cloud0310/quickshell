@@ -267,12 +267,17 @@ void I3IpcController::handleWorkspaceEvent(I3IpcEvent* event) {
 		}
 
 		auto* newWorkspace = this->findWorkspaceByName(newName);
+		auto existed = newWorkspace != nullptr;
 
-		if (newWorkspace == nullptr) {
+		if (!existed) {
 			newWorkspace = new I3Workspace(this);
 		}
 
 		newWorkspace->updateFromObject(newData.toObject().toVariantMap());
+
+		if (!existed) {
+			this->mWorkspaces.insertObjectSorted(newWorkspace, &I3IpcController::compareWorkspaces);
+		}
 
 		if (newWorkspace->bindableMonitor().value()) {
 			auto* monitor = newWorkspace->bindableMonitor().value();

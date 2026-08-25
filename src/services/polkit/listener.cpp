@@ -176,22 +176,19 @@ static void initiate_authentication(
 
 	// The original strings are freed by the caller after we return, so we
 	// copy them into QStrings.
-	auto* request = new qs::service::polkit::AuthRequest {
-	    .actionId = QString::fromUtf8(actionId),
-	    .message = QString::fromUtf8(message),
-	    .iconName = QString::fromUtf8(iconName),
-	    .cookie = QString::fromUtf8(cookie),
-	    .identities = std::move(identityVector),
+	auto* request = new qs::service::polkit::AuthRequest();
+	request->actionId = QString::fromUtf8(actionId);
+	request->message = QString::fromUtf8(message);
+	request->iconName = QString::fromUtf8(iconName);
+	request->cookie = QString::fromUtf8(cookie);
+	request->identities = std::move(identityVector);
+	request->task = GObjectRef<GTask>(asyncResult, qs::service::polkit::G_OBJECT_NO_REF);
+	request->cancellable = GObjectRef<GCancellable>(cancellable);
+	request->cb = self->cb;
 
-	    .task = asyncResult,
-	    .cancellable = cancellable,
-	    .handlerId = 0,
-	    .cb = self->cb
-	};
-
-	if (cancellable != nullptr) {
+	if (request->cancellable.get() != nullptr) {
 		request->handlerId = g_cancellable_connect(
-		    cancellable,
+		    request->cancellable.get(),
 		    reinterpret_cast<GCallback>(authentication_cancelled_cb),
 		    request,
 		    nullptr
@@ -210,16 +207,22 @@ static gboolean initiate_authentication_finish(
 }
 
 namespace qs::service::polkit {
+AuthRequest::~AuthRequest() {
+	if (this->cancellable.get() != nullptr && this->handlerId != 0) {
+		g_cancellable_disconnect(this->cancellable.get(), this->handlerId);
+	}
+}
+
 // While these functions can be const since they do not modify member variables,
 // they are logically non-const since they modify the state of the
 // authentication request. Therefore, we do not mark them as const.
 // NOLINTBEGIN(readability-make-member-function-const)
-void AuthRequest::complete() { g_task_return_boolean(this->task, true); }
+void AuthRequest::complete() { g_task_return_boolean(this->task.get(), true); }
 
 void AuthRequest::cancel(const QString& reason) {
 	auto utf8Reason = reason.toUtf8();
 	g_task_return_new_error(
-	    this->task,
+	    this->task.get(),
 	    POLKIT_ERROR,
 	    POLKIT_ERROR_CANCELLED,
 	    "%s",

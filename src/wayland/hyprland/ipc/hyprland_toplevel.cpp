@@ -33,6 +33,7 @@ HyprlandToplevel::HyprlandToplevel(HyprlandIpc* ipc): QObject(ipc), ipc(ipc) {
 }
 
 HyprlandToplevel::HyprlandToplevel(HyprlandIpc* ipc, Toplevel* toplevel): HyprlandToplevel(ipc) {
+	this->setParent(toplevel);
 	this->mWaylandHandle = toplevel->implHandle();
 	auto* instance = HyprlandToplevelMappingManager::instance();
 	auto addr = instance->getToplevelAddress(this->mWaylandHandle);

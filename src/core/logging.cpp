@@ -304,11 +304,9 @@ void LogManager::init(
     const QString& rules,
     const QString& prefix
 ) {
-	static bool alreadyInitialized = false;
-	if (alreadyInitialized) return;
-	alreadyInitialized = true;
-
 	auto* instance = LogManager::instance();
+	if (instance->initialized) return;
+	instance->initialized = true;
 	instance->colorLogs = color;
 	instance->timestampLogs = timestamp;
 	instance->sparse = sparseOnly;
@@ -321,6 +319,7 @@ void LogManager::init(
 		// Load QT_LOGGING_RULES because we ignore the last category filter for QS messages
 		// due to disk config files.
 		parser.setContent(qEnvironmentVariable("QT_LOGGING_RULES"));
+		delete instance->rules;
 		instance->rules = new QList(parser.rules());
 		parser.setContent(rules);
 		instance->rules->append(parser.rules());
@@ -333,7 +332,7 @@ void LogManager::init(
 		instance->lastCategoryFilter = nullptr;
 	}
 
-	qInstallMessageHandler(&LogManager::messageHandler);
+	instance->lastMessageHandler = qInstallMessageHandler(&LogManager::messageHandler);
 
 	instance->threadLogging = new ThreadLogging(instance);
 	instance->threadLogging->init();
@@ -346,12 +345,44 @@ void LogManager::initThreadLogging() {
 
 	qCDebug(logLogging) << "Moving logger to dedicated thread...";
 
-	auto* thread = new QThread();
+	instance->loggingThread = new QThread();
 	instance->threadLogging->setParent(nullptr);
-	instance->threadLogging->moveToThread(thread);
-	thread->start();
+	instance->threadLogging->moveToThread(instance->loggingThread);
+	instance->loggingThread->start();
 
 	qCDebug(logLogging) << "Logger thread initialized.";
+}
+
+void LogManager::shutdown() {
+	auto* instance = LogManager::instance();
+	if (!instance->initialized) return;
+
+	if (instance->loggingThread) {
+		auto* currentThread = QThread::currentThread();
+		QMetaObject::invokeMethod(
+		    instance->threadLogging,
+		    [instance, currentThread]() { instance->threadLogging->moveToThread(currentThread); },
+		    Qt::BlockingQueuedConnection
+		);
+
+		instance->loggingThread->quit();
+		instance->loggingThread->wait();
+		delete instance->loggingThread;
+		instance->loggingThread = nullptr;
+	}
+
+	delete instance->threadLogging;
+	instance->threadLogging = nullptr;
+
+	QLoggingCategory::installFilter(instance->lastCategoryFilter);
+	instance->lastCategoryFilter = nullptr;
+
+	qInstallMessageHandler(instance->lastMessageHandler);
+	instance->lastMessageHandler = nullptr;
+
+	delete instance->rules;
+	instance->rules = nullptr;
+	instance->initialized = false;
 }
 
 void initLogCategoryLevel(const char* name, QtMsgType defaultLevel) {
@@ -390,7 +421,7 @@ void ThreadLogging::init() {
 	}
 
 	if (logMfd != -1) {
-		this->file = new QFile();
+		this->file = new QFile(this);
 
 		if (this->file->open(logMfd, QFile::ReadWrite, QFile::AutoCloseHandle)) {
 			this->fileStream.setDevice(this->file);
@@ -402,7 +433,7 @@ void ThreadLogging::init() {
 	if (dlogMfd != -1) {
 		crash::CrashInfo::INSTANCE.logFd = dlogMfd;
 
-		this->detailedFile = new QFile();
+		this->detailedFile = new QFile(this);
 		// buffered by WriteBuffer
 		if (this->detailedFile
 		        ->open(dlogMfd, QFile::ReadWrite | QFile::Unbuffered, QFile::AutoCloseHandle))
@@ -447,8 +478,8 @@ void ThreadLogging::initFs() {
 
 	auto path = runDir->filePath("log.log");
 	auto detailedPath = runDir->filePath("log.qslog");
-	auto* file = new QFile(path);
-	auto* detailedFile = new QFile(detailedPath);
+	auto* file = new QFile(path, this);
+	auto* detailedFile = new QFile(detailedPath, this);
 
 	if (!file->open(QFile::ReadWrite | QFile::Truncate)) {
 		qCCritical(
@@ -741,8 +772,9 @@ start:
 		if (next == EncodedLogOpcode::RegisterCategory) {
 			if (!this->registerCategory()) return false;
 			goto start;
-		} else if (next == EncodedLogOpcode::RecentMessageShort
-		           || next == EncodedLogOpcode::RecentMessageLong)
+		} else if (
+		    next == EncodedLogOpcode::RecentMessageShort || next == EncodedLogOpcode::RecentMessageLong
+		)
 		{
 			quint8 index = 0;
 			quint32 secondDelta = 0;

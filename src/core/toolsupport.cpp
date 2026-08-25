@@ -1,5 +1,7 @@
 #include "toolsupport.hpp"
 #include <cerrno>
+#include <memory>
+#include <qfile.h>
 
 #include <fcntl.h>
 #include <qcontainerfwd.h>
@@ -47,7 +49,7 @@ bool QmlToolingSupport::lockTooling() {
 	if (QmlToolingSupport::toolingLock) return true;
 
 	auto lockPath = QsPaths::instance()->shellVfsDir()->filePath("tooling.lock");
-	auto* file = new QFile(lockPath);
+	auto file = std::make_unique<QFile>(lockPath);
 
 	if (!file->open(QFile::WriteOnly)) {
 		qCCritical(logTooling) << "Could not open tooling lock for write";
@@ -64,7 +66,7 @@ bool QmlToolingSupport::lockTooling() {
 
 	if (fcntl(file->handle(), F_SETLK, &lock) == 0) {
 		qCInfo(logTooling) << "Acquired tooling support lock";
-		QmlToolingSupport::toolingLock = file;
+		QmlToolingSupport::toolingLock = std::move(file);
 		return true;
 	} else if (errno == EACCES || errno == EAGAIN) {
 		qCInfo(logTooling) << "Tooling support locked by another instance";

@@ -292,6 +292,16 @@ void FileViewWriter::write(
 }
 
 FileView::~FileView() {
+	if (this->liveOperation) {
+		auto* operation = this->liveOperation;
+		this->liveOperation = nullptr;
+
+		operation->tryCancel();
+		QObject::disconnect(operation, nullptr, this, nullptr);
+		QThreadPool::globalInstance()->waitForDone();
+		delete operation;
+	}
+
 	if (this->mAdapter) {
 		this->mAdapter->setFileView(nullptr);
 	}

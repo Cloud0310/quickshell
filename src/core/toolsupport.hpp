@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+#include <qfile.h>
 #include <qdir.h>
 
 #include "scan.hpp"
@@ -16,7 +18,7 @@ private:
 	static bool updateQmllsConfig(const QDir& configRoot, bool create);
 	static void updateToolingFs(QmlScanner& scanner, const QDir& scanDir, const QDir& linkDir);
 	static inline bool toolingEnabled = false;
-	static inline QFile* toolingLock = nullptr;
+	static inline std::unique_ptr<QFile> toolingLock;
 };
 
 } // namespace qs::core

@@ -16,7 +16,10 @@ class IccScreencopyContext
     , public QtWayland::ext_image_copy_capture_frame_v1 {
 
 public:
-	IccScreencopyContext(::ext_image_copy_capture_session_v1* session);
+	IccScreencopyContext(
+	    ::ext_image_copy_capture_session_v1* session,
+	    ::ext_image_capture_source_v1* source
+	);
 	~IccScreencopyContext() override;
 	Q_DISABLE_COPY_MOVE(IccScreencopyContext);
 
@@ -42,6 +45,7 @@ private:
 	void doCapture();
 
 	buffer::WlBufferRequest request;
+	::ext_image_capture_source_v1* source;
 	bool statePending = true;
 	bool capturePending = false;
 	QRect damage;

@@ -104,6 +104,7 @@ void PolkitAgentImpl::registerComplete(bool success) {
 void PolkitAgentImpl::initiateAuthentication(AuthRequest* request) {
 	qCDebug(logPolkit) << "incoming authentication request for action" << request->actionId;
 
+	request->setParent(this);
 	this->queuedRequests.emplace_back(request);
 
 	if (this->queuedRequests.size() == 1) {
@@ -117,12 +118,13 @@ void PolkitAgentImpl::cancelAuthentication(AuthRequest* request) {
 	auto* flow = this->bActiveFlow.value();
 	if (flow && flow->authRequest() == request) {
 		flow->cancelFromAgent();
-	} else if (auto it = std::ranges::find(this->queuedRequests, request);
-	           it != this->queuedRequests.end())
+	} else if (
+	    auto it = std::ranges::find(this->queuedRequests, request); it != this->queuedRequests.end()
+	)
 	{
 		qCDebug(logPolkit) << "removing queued authentication request for action" << (*it)->actionId;
 		(*it)->cancel("Authentication request was cancelled");
-		delete (*it);
+		(*it)->deleteLater();
 		this->queuedRequests.erase(it);
 	} else {
 		qCWarning(logPolkit) << "the cancelled request was not found in the queue.";
@@ -151,7 +153,7 @@ void PolkitAgentImpl::activateAuthenticationRequest() {
 		return;
 	}
 
-	this->bActiveFlow = new AuthFlow(req, std::move(identities));
+	this->bActiveFlow = new AuthFlow(req, std::move(identities), this);
 
 	QObject::connect(
 	    this->bActiveFlow.value(),

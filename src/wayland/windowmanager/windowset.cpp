@@ -93,14 +93,20 @@ void WindowsetManager::onServerCommit() {
 		windowsets.append(ws);
 	}
 
+	QList<QObject*> destroyed;
+
 	for (auto* wsImpl: this->pendingWindowsetDestructions) {
-		windowsets.removeOne(this->windowsetByImpl.value(wsImpl));
-		this->windowsetByImpl.remove(wsImpl);
+		if (auto* windowset = this->windowsetByImpl.take(wsImpl)) {
+			windowsets.removeOne(windowset);
+			destroyed.push_back(windowset);
+		}
 	}
 
 	for (auto* projImpl: this->pendingProjectionDestructions) {
-		projections.removeOne(this->projectionsByImpl.value(projImpl));
-		this->projectionsByImpl.remove(projImpl);
+		if (auto* projection = this->projectionsByImpl.take(projImpl)) {
+			projections.removeOne(projection);
+			destroyed.push_back(projection);
+		}
 	}
 
 	for (auto* ws: windowsets) {
@@ -118,6 +124,10 @@ void WindowsetManager::onServerCommit() {
 
 	wm->bWindowsets = windowsets;
 	wm->bWindowsetProjections = projections;
+
+	for (auto* object: destroyed) {
+		object->deleteLater();
+	}
 
 	Qt::endPropertyUpdateGroup();
 }

@@ -12,6 +12,7 @@
 #include <qloggingcategory.h>
 #include <qmutex.h>
 #include <qobject.h>
+#include <qthread.h>
 #include <qtmetamacros.h>
 
 #include "logcat.hpp"
@@ -89,6 +90,7 @@ public:
 	    const QString& rules,
 	    const QString& prefix = ""
 	);
+	static void shutdown();
 
 	static void initThreadLogging();
 	static void initFs();
@@ -113,6 +115,9 @@ private:
 	static void filterCategory(QLoggingCategory* category);
 
 	QLoggingCategory::CategoryFilter lastCategoryFilter = nullptr;
+	QtMessageHandler lastMessageHandler = nullptr;
+	QThread* loggingThread = nullptr;
+	bool initialized = false;
 	bool sparse = false;
 	QString prefix;
 	QString mRulesString;

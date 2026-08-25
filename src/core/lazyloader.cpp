@@ -140,7 +140,8 @@ void LazyLoader::setSource(QString source) {
 		auto* context = QQmlEngine::contextForObject(this);
 		this->mComponent = new QQmlComponent(
 		    context == nullptr ? nullptr : context->engine(),
-		    context == nullptr ? this->mSource : context->resolvedUrl(this->mSource)
+		    context == nullptr ? this->mSource : context->resolvedUrl(this->mSource),
+		    this
 		);
 
 		if (this->mComponent->isError()) {

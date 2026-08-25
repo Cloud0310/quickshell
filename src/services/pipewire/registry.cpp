@@ -251,6 +251,9 @@ void PwRegistry::onGlobalRemoved(void* data, quint32 id) {
 	} else if (auto* node = self->nodes.value(id)) {
 		self->nodes.remove(id);
 		node->safeDestroy();
+	} else if (auto* device = self->devices.value(id)) {
+		self->devices.remove(id);
+		device->safeDestroy();
 	}
 }
 
