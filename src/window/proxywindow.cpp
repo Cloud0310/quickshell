@@ -56,7 +56,10 @@ ProxyWindowBase::ProxyWindowBase(QObject* parent)
 	// clang-format on
 }
 
-ProxyWindowBase::~ProxyWindowBase() { this->deleteWindow(true); }
+ProxyWindowBase::~ProxyWindowBase() {
+	if (this->window != nullptr) emit this->windowDestroyed();
+	delete this->disownWindow(true);
+}
 
 ProxyWindowBase* ProxyWindowBase::forObject(QObject* obj) {
 	if (auto* proxy = qobject_cast<ProxyWindowBase*>(obj)) return proxy;

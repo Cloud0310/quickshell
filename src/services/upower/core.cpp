@@ -125,6 +125,7 @@ void UPower::onDeviceRemoved(const QDBusObjectPath& path) {
 		this->mDevices.erase(iter);
 		this->readyDevices.removeObject(device);
 		qCDebug(logUPower) << "UPowerDevice" << device->path() << "removed.";
+		delete device;
 	}
 }
 

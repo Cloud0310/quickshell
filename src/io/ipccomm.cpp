@@ -376,7 +376,9 @@ RemoteSignalListener::RemoteSignalListener(
 )
     : conn(conn)
     , command(std::move(command)) {
+	auto* parent = conn->parent();
 	conn->setParent(this);
+	this->setParent(parent);
 
 	QObject::connect(
 	    IpcSignalRemoteListener::instance(),

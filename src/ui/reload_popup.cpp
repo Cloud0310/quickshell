@@ -27,6 +27,7 @@ ReloadPopup::ReloadPopup(QString instanceId, bool failed, QString errorString)
 
 	if (!this->popup) {
 		qCritical() << "Failed to open reload popup:" << component.errorString();
+		return;
 	}
 
 	this->generation->onReload(nullptr);
@@ -50,7 +51,15 @@ void ReloadPopup::spawnPopup(QString instanceId, bool failed, QString errorStrin
 	if (qEnvironmentVariableIsSet("QS_NO_RELOAD_POPUP")) return;
 
 	if (ReloadPopup::activePopup) ReloadPopup::activePopup->closed();
-	ReloadPopup::activePopup = new ReloadPopup(std::move(instanceId), failed, std::move(errorString));
+
+	auto* popup = new ReloadPopup(std::move(instanceId), failed, std::move(errorString));
+	if (popup->popup == nullptr) {
+		popup->generation->destroy();
+		delete popup;
+		return;
+	}
+
+	ReloadPopup::activePopup = popup;
 }
 
 ReloadPopup* ReloadPopup::activePopup = nullptr;

@@ -7,6 +7,7 @@
 #include <qdatetime.h>
 #include <qdebug.h>
 #include <qlogging.h>
+#include <qscopeguard.h>
 #include <qtenvironmentvariables.h>
 #include <unistd.h>
 
@@ -123,9 +124,12 @@ int main(int argc, char** argv) {
 	qsCheckCrash(argc, argv);
 #endif
 
-	checkCrashRelaunch(argv);
-	auto code = runCommand(argc, argv);
-
+	int code = 0;
+	{
+		auto loggingGuard = qScopeGuard([]() { LogManager::shutdown(); });
+		checkCrashRelaunch(argv);
+		code = runCommand(argc, argv);
+	}
 	exitDaemon(code);
 	return code;
 }

@@ -10,6 +10,7 @@
 #include <qwayland-ext-image-copy-capture-v1.h>
 #include <qwaylandclientextension.h>
 #include <sys/types.h>
+#include <wayland-ext-image-capture-source-v1-client-protocol.h>
 #include <wayland-ext-image-copy-capture-v1-client-protocol.h>
 #include <wayland-util.h>
 
@@ -26,8 +27,12 @@ QS_LOGGING_CATEGORY(logIcc, "quickshell.wayland.screencopy.icc", QtWarningMsg);
 using IccCaptureSession = QtWayland::ext_image_copy_capture_session_v1;
 using IccCaptureFrame = QtWayland::ext_image_copy_capture_frame_v1;
 
-IccScreencopyContext::IccScreencopyContext(::ext_image_copy_capture_session_v1* session)
-    : IccCaptureSession(session) {}
+IccScreencopyContext::IccScreencopyContext(
+    ::ext_image_copy_capture_session_v1* session,
+    ::ext_image_capture_source_v1* source
+)
+    : IccCaptureSession(session)
+    , source(source) {}
 
 IccScreencopyContext::~IccScreencopyContext() {
 	if (this->IccCaptureSession::object()) {
@@ -36,6 +41,10 @@ IccScreencopyContext::~IccScreencopyContext() {
 
 	if (this->IccCaptureFrame::object()) {
 		this->IccCaptureFrame::destroy();
+	}
+
+	if (this->source != nullptr) {
+		ext_image_capture_source_v1_destroy(this->source);
 	}
 }
 
@@ -207,7 +216,13 @@ IccManager::createSession(::ext_image_capture_source_v1* source, bool paintCurso
 	    source,
 	    paintCursors ? QtWayland::ext_image_copy_capture_manager_v1::options_paint_cursors : 0
 	);
-	return new IccScreencopyContext(session);
+
+	if (session == nullptr) {
+		ext_image_capture_source_v1_destroy(source);
+		return nullptr;
+	}
+
+	return new IccScreencopyContext(session, source);
 }
 
 IccOutputSourceManager::IccOutputSourceManager(): QWaylandClientExtensionTemplate(1) {

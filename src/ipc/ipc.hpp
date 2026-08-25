@@ -136,7 +136,7 @@ class IpcServer: public QObject {
 	Q_OBJECT;
 
 public:
-	explicit IpcServer(const QString& path);
+	explicit IpcServer(const QString& path, QObject* parent = nullptr);
 
 	static void start();
 

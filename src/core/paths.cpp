@@ -23,8 +23,8 @@ QS_LOGGING_CATEGORY(logPaths, "quickshell.paths", QtWarningMsg);
 }
 
 QsPaths* QsPaths::instance() {
-	static auto* instance = new QsPaths(); // NOLINT
-	return instance;
+	static QsPaths instance;
+	return &instance;
 }
 
 void QsPaths::init(
@@ -354,9 +354,10 @@ QDir QsPaths::shellCacheDir() {
 void QsPaths::createLock() {
 	if (auto* runDir = this->instanceRunDir()) {
 		auto path = runDir->filePath("instance.lock");
-		auto* file = new QFile(path); // leaked
+		this->instanceLock.close();
+		this->instanceLock.setFileName(path);
 
-		if (!file->open(QFile::ReadWrite | QFile::Truncate)) {
+		if (!this->instanceLock.open(QFile::ReadWrite | QFile::Truncate)) {
 			qCCritical(logPaths) << "Could not create instance lock at" << path;
 			return;
 		}
@@ -369,13 +370,14 @@ void QsPaths::createLock() {
 		    .l_pid = 0,
 		};
 
-		if (fcntl(file->handle(), F_SETLK, &lock) != 0) { // NOLINT
+		if (fcntl(this->instanceLock.handle(), F_SETLK, &lock) != 0) { // NOLINT
 			qCCritical(logPaths).nospace() << "Could not lock instance lock at " << path
 			                               << " with error code " << errno << ": " << qt_error_string();
+			this->instanceLock.close();
 		} else {
-			auto stream = QDataStream(file);
+			auto stream = QDataStream(&this->instanceLock);
 			stream << InstanceInfo::CURRENT;
-			file->flush();
+			this->instanceLock.flush();
 			qCDebug(logPaths) << "Created instance lock at" << path;
 		}
 	} else {

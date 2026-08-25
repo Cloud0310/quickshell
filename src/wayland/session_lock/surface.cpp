@@ -38,6 +38,10 @@ QSWaylandSessionLockSurface::QSWaylandSessionLockSurface(QtWaylandClient::QWayla
 }
 
 QSWaylandSessionLockSurface::~QSWaylandSessionLockSurface() {
+#if QT_VERSION < QT_VERSION_CHECK(6, 10, 0)
+	delete this->initBuf;
+#endif
+
 	if (this->object() == nullptr) return;
 	if (this->ext != nullptr) this->ext->surface = nullptr;
 	this->destroy();
@@ -87,6 +91,8 @@ void QSWaylandSessionLockSurface::ext_session_lock_surface_v1_configure(
 #if QT_VERSION < QT_VERSION_CHECK(6, 10, 0)
 		if (this->visible) this->initVisible();
 #endif
+
+		if (this->visible) this->setVisible();
 	} else {
 		// applyConfigureWhenPossible runs too late and causes a protocol error on reconfigure.
 		this->window()->resizeFromApplyConfigure(this->size);
@@ -97,7 +103,10 @@ void QSWaylandSessionLockSurface::ext_session_lock_surface_v1_configure(
 
 bool QSWaylandSessionLockSurface::commitSurfaceRole() const { return false; }
 
-void QSWaylandSessionLockSurface::setVisible() { this->window()->window()->setVisible(true); }
+void QSWaylandSessionLockSurface::setVisible() {
+	this->visible = true;
+	if (this->configured) this->window()->window()->setVisible(true);
+}
 
 #else
 

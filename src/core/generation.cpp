@@ -83,7 +83,15 @@ void EngineGeneration::destroy() {
 	}
 
 	if (this->root != nullptr) {
-		QObject::connect(this->root, &QObject::destroyed, this, [this]() {
+		this->pendingRoot = this->root;
+		QObject::connect(this->pendingRoot, &QObject::destroyed, this, [this]() {
+			this->pendingRoot = nullptr;
+
+			for (auto* extension: this->extensions.values()) {
+				delete extension;
+			}
+			this->extensions.clear();
+
 			// prevent further js execution between garbage collection and engine destruction.
 			this->engine->setInterrupted(true);
 
@@ -102,9 +110,14 @@ void EngineGeneration::destroy() {
 			if (terminate) QCoreApplication::exit(code);
 		});
 
-		this->root->deleteLater();
+		this->pendingRoot->deleteLater();
 		this->root = nullptr;
 	} else {
+		for (auto* extension: this->extensions.values()) {
+			delete extension;
+		}
+		this->extensions.clear();
+
 		g_generations.remove(this->engine);
 
 		// the engine has never been used, no need to clean up
@@ -120,10 +133,26 @@ void EngineGeneration::destroy() {
 }
 
 void EngineGeneration::shutdown() {
-	if (this->destroying) return;
+	this->destroying = true;
+
+	if (this->pendingRoot != nullptr) {
+		QObject::disconnect(this->pendingRoot, nullptr, this, nullptr);
+		delete this->pendingRoot;
+		this->pendingRoot = nullptr;
+	}
+
+	delete this->watcher;
+	this->watcher = nullptr;
 
 	delete this->root;
 	this->root = nullptr;
+
+	for (auto* extension: this->extensions.values()) {
+		delete extension;
+	}
+	this->extensions.clear();
+
+	g_generations.remove(this->engine);
 	delete this->engine;
 	this->engine = nullptr;
 	delete this;
@@ -170,7 +199,7 @@ void EngineGeneration::postReload() {
 void EngineGeneration::setWatchingFiles(bool watching) {
 	if (watching) {
 		if (this->watcher == nullptr) {
-			this->watcher = new QFileSystemWatcher();
+			this->watcher = new QFileSystemWatcher(this);
 
 			for (auto& file: this->scanner.scannedFiles) {
 				this->watcher->addPath(file);

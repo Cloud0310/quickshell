@@ -3,6 +3,7 @@
 #include <ostream>
 #include <string>
 
+#include <qbytearray.h>
 #include <qlogging.h>
 #include <qloggingcategory.h>
 #include <qstring.h>
@@ -27,51 +28,53 @@ pid_t PamConversation::createSubprocess(
 	auto toSubprocess = std::array<int, 2>();
 	auto fromSubprocess = std::array<int, 2>();
 
-	if (pipe(toSubprocess.data()) == -1 || pipe(fromSubprocess.data()) == -1) {
+	if (pipe(toSubprocess.data()) == -1) {
 		qCDebug(logPam) << "Failed to create pipes for subprocess.";
 		return 0;
 	}
 
-	auto* configDirF = strdup(configDir.toStdString().c_str()); // NOLINT (include)
-	auto* configF = strdup(config.toStdString().c_str());       // NOLINT (include)
-	auto* userF = strdup(user.toStdString().c_str());           // NOLINT (include)
-	auto log = logPam().isDebugEnabled();
+	auto toSubprocessGuard = PamIpcPipes(toSubprocess[0], toSubprocess[1]);
 
+	if (pipe(fromSubprocess.data()) == -1) {
+		qCDebug(logPam) << "Failed to create pipes for subprocess.";
+		return 0;
+	}
+
+	auto fromSubprocessGuard = PamIpcPipes(fromSubprocess[0], fromSubprocess[1]);
+	auto configDirF = configDir.toUtf8();
+	auto configF = config.toUtf8();
+	auto userF = user.toUtf8();
+	auto log = logPam().isDebugEnabled();
 	auto pid = fork();
 
 	if (pid < 0) {
 		qCDebug(logPam) << "Failed to fork for subprocess.";
+		return 0;
 	} else if (pid == 0) {
-		close(toSubprocess[1]);   // close w
-		close(fromSubprocess[0]); // close r
+		close(toSubprocessGuard.fdOut);
+		close(fromSubprocessGuard.fdIn);
 
 		{
-			auto subprocess = PamSubprocess(log, toSubprocess[0], fromSubprocess[1]);
-			auto code = subprocess.exec(configDirF, configF, userF);
+			auto subprocess = PamSubprocess(log, toSubprocessGuard.fdIn, fromSubprocessGuard.fdOut);
+			auto code = subprocess.exec(configDirF.constData(), configF.constData(), userF.constData());
 			subprocess.sendCode(code);
 		}
-
-		free(configDirF); // NOLINT
-		free(configF);    // NOLINT
-		free(userF);      // NOLINT
 
 		// do not do cleanup that may affect the parent
 		_exit(0);
 	} else {
-		close(toSubprocess[0]);   // close r
-		close(fromSubprocess[1]); // close w
+		close(toSubprocessGuard.fdIn);
+		toSubprocessGuard.fdIn = 0;
+		close(fromSubprocessGuard.fdOut);
+		fromSubprocessGuard.fdOut = 0;
 
-		pipes->fdIn = fromSubprocess[0];
-		pipes->fdOut = toSubprocess[1];
-
-		free(configDirF); // NOLINT
-		free(configF);    // NOLINT
-		free(userF);      // NOLINT
+		pipes->fdIn = fromSubprocessGuard.fdIn;
+		fromSubprocessGuard.fdIn = 0;
+		pipes->fdOut = toSubprocessGuard.fdOut;
+		toSubprocessGuard.fdOut = 0;
 
 		return pid;
 	}
-
-	return -1; // should never happen but lint
 }
 
 PamIpcExitCode PamSubprocess::exec(const char* configDir, const char* config, const char* user) {

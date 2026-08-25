@@ -8,6 +8,7 @@
 
 #include <glib-object.h>
 #include <polkitagent/polkitagent.h>
+#include <qobject.h>
 
 #define signals Q_SIGNALS
 
@@ -16,7 +17,11 @@
 namespace qs::service::polkit {
 class ListenerCb;
 //! All state that comes in from PolKit about an authentication request.
-struct AuthRequest {
+struct AuthRequest: QObject {
+	explicit AuthRequest() = default;
+	~AuthRequest() override;
+	Q_DISABLE_COPY_MOVE(AuthRequest);
+
 	//! The action ID that this session is for.
 	QString actionId;
 	//! Message to present to the user.
@@ -29,13 +34,13 @@ struct AuthRequest {
 	std::vector<GObjectRef<PolkitIdentity>> identities;
 
 	//! Implementation detail to mark authentication done.
-	GTask* task;
+	GObjectRef<GTask> task;
 	//! Implementation detail for requests cancelled by agent.
-	GCancellable* cancellable;
+	GObjectRef<GCancellable> cancellable;
 	//! Callback handler ID for the cancellable.
-	gulong handlerId;
+	gulong handlerId = 0;
 	//! Callbacks for the listener
-	ListenerCb* cb;
+	ListenerCb* cb = nullptr;
 
 	void complete();
 	void cancel(const QString& reason);

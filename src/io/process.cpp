@@ -29,13 +29,15 @@ Process::Process(QObject* parent): PostReloadHook(parent) {
 }
 
 Process::~Process() {
-	if (this->process != nullptr && this->process->processId() != 0) {
-		// Deleting after the process finishes hides the process destroyed warning in logs
-		QObject::connect(this->process, &QProcess::finished, [p = this->process] { delete p; });
+	if (this->process == nullptr) return;
 
-		this->process->setParent(nullptr);
-		this->process->kill();
+	auto* process = std::exchange(this->process, nullptr);
+	QObject::disconnect(process, nullptr, this, nullptr);
+	if (process->processId() != 0) {
+		process->kill();
+		process->waitForFinished();
 	}
+	delete process;
 }
 
 void Process::onPostReload() { this->startProcessIfReady(); }

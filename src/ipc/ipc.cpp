@@ -19,7 +19,7 @@ namespace qs::ipc {
 
 QS_LOGGING_CATEGORY(logIpc, "quickshell.ipc", QtWarningMsg);
 
-IpcServer::IpcServer(const QString& path) {
+IpcServer::IpcServer(const QString& path, QObject* parent): QObject(parent) {
 	QObject::connect(&this->server, &QLocalServer::newConnection, this, &IpcServer::onNewConnection);
 
 	QLocalServer::removeServer(path);
@@ -35,7 +35,7 @@ IpcServer::IpcServer(const QString& path) {
 void IpcServer::start() {
 	if (auto* run = QsPaths::instance()->instanceRunDir()) {
 		auto path = run->filePath("ipc.sock");
-		new IpcServer(path);
+		new IpcServer(path, QCoreApplication::instance());
 	} else {
 		qCCritical(
 		    logIpc

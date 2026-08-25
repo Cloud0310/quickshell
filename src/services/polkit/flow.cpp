@@ -28,6 +28,7 @@ AuthFlow::AuthFlow(AuthRequest* request, QList<Identity*>&& identities, QObject*
 	// This should never happen.
 	if (!this->bSelectedIdentity.value())
 		qCFatal(logPolkitState) << "AuthFlow created with no valid identities!";
+	request->setParent(this);
 
 	for (auto* identity: this->mIdentities) {
 		identity->setParent(this);
@@ -36,7 +37,7 @@ AuthFlow::AuthFlow(AuthRequest* request, QList<Identity*>&& identities, QObject*
 	this->setupSession();
 }
 
-AuthFlow::~AuthFlow() { delete this->mRequest; };
+AuthFlow::~AuthFlow() = default;
 
 void AuthFlow::setSelectedIdentity(Identity* identity) {
 	if (this->bSelectedIdentity.value() == identity) return;

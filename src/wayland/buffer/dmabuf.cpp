@@ -173,8 +173,8 @@ LinuxDmabufFeedback::LinuxDmabufFeedback(::zwp_linux_dmabuf_feedback_v1* feedbac
 LinuxDmabufFeedback::~LinuxDmabufFeedback() { this->destroy(); }
 
 void LinuxDmabufFeedback::zwp_linux_dmabuf_feedback_v1_format_table(int32_t fd, uint32_t size) {
+	auto fdGuard = qScopeGuard([fd]() { close(fd); });
 	this->formatTableSize = size;
-
 	this->formatTable = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
 	if (this->formatTable == MAP_FAILED) {

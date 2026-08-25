@@ -93,6 +93,7 @@ private:
 	QVector<QQuickWindow*> trackedWindows;
 	bool incubationControllersLocked = false;
 	QHash<const void*, EngineGenerationExt*> extensions;
+	QObject* pendingRoot = nullptr;
 
 	bool destroying = false;
 	bool shouldTerminate = false;

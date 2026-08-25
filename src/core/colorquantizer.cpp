@@ -268,9 +268,12 @@ void ColorQuantizer::quantizeAsync() {
 void ColorQuantizer::cancelAsync() {
 	if (!this->liveOperation) return;
 
-	this->liveOperation->tryCancel();
+	auto* operation = this->liveOperation;
+	this->liveOperation = nullptr;
+
+	operation->tryCancel();
 	QThreadPool::globalInstance()->waitForDone();
 
-	QObject::disconnect(this->liveOperation, nullptr, this, nullptr);
-	this->liveOperation = nullptr;
+	QObject::disconnect(operation, nullptr, this, nullptr);
+	delete operation;
 }
