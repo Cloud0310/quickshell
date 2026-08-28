@@ -57,7 +57,7 @@ QString base36Encode(T number) {
 
 } // namespace
 
-int launch(const LaunchArgs& args, char** argv, QCoreApplication* coreApplication) {
+int launch(const LaunchArgs& args, char** argv) {
 	auto pathId = QCryptographicHash::hash(args.configPath.toUtf8(), QCryptographicHash::Md5).toHex();
 	auto shellId = QString(pathId);
 
@@ -171,7 +171,6 @@ int launch(const LaunchArgs& args, char** argv, QCoreApplication* coreApplicatio
 	QsPaths::init(shellId, pathId, pragmas.dataDir, pragmas.stateDir, pragmas.cacheDir);
 	QsPaths::instance()->linkRunDir();
 	QsPaths::instance()->linkPathDir();
-	LogManager::initFs();
 
 	Common::INITIAL_ENVIRONMENT = QProcessEnvironment::systemEnvironment();
 
@@ -279,8 +278,6 @@ int launch(const LaunchArgs& args, char** argv, QCoreApplication* coreApplicatio
 
 	QGuiApplication::setDesktopSettingsAware(pragmas.desktopSettingsAware);
 
-	delete coreApplication;
-
 	QGuiApplication* app = nullptr;
 	auto qArgC = 0;
 
@@ -289,6 +286,9 @@ int launch(const LaunchArgs& args, char** argv, QCoreApplication* coreApplicatio
 	} else {
 		app = new QGuiApplication(qArgC, argv);
 	}
+
+	LogManager::initThreadLogging();
+	LogManager::initFs();
 
 	QGuiApplication::setDesktopFileName(appId);
 
