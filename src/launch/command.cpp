@@ -465,7 +465,7 @@ int ipcCommand(CommandState& cmd) {
 	});
 }
 
-int launchFromCommand(CommandState& cmd, QCoreApplication* coreApplication) {
+int launchFromCommand(CommandState& cmd) {
 	QString configPath;
 
 	auto r = locateConfigFile(cmd, configPath);
@@ -485,14 +485,13 @@ int launchFromCommand(CommandState& cmd, QCoreApplication* coreApplication) {
 	        .debugPort = cmd.debug.port,
 	        .waitForDebug = cmd.debug.wait,
 	    },
-	    cmd.exec.argv,
-	    coreApplication
+	    cmd.exec.argv
 	);
 }
 
 } // namespace
 
-int runCommand(int argc, char** argv, QCoreApplication* coreApplication) {
+int runCommand(int argc, char** argv) {
 	auto state = CommandState();
 	if (auto ret = parseCommand(argc, argv, state); ret != 65535) return ret;
 
@@ -577,7 +576,7 @@ int runCommand(int argc, char** argv, QCoreApplication* coreApplication) {
 			              "the quickshell package must be rebuilt.\n";
 		}
 
-		return launchFromCommand(state, coreApplication);
+		return launchFromCommand(state);
 	}
 
 	return 0;
