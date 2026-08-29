@@ -2,6 +2,7 @@
 #include <array>
 #include <cerrno>
 #include <cstring>
+#include <functional>
 #include <utility>
 
 #include <qconfig.h>
@@ -554,20 +555,24 @@ int runCommand(int argc, char** argv) {
 		);
 	}
 
+	std::function<int(CommandState&)> continuation;
+
 	if (state.misc.printVersion) {
 		if (state.log.verbosity == 0) {
 			qCInfo(logBare).noquote() << "Quickshell" << qs::debuginfo::qsVersion();
 		} else {
 			qCInfo(logBare).noquote() << qs::debuginfo::combinedInfo();
 		}
+
+		return 0;
 	} else if (*state.subcommand.log) {
-		return readLogFile(state);
+		continuation = readLogFile;
 	} else if (*state.subcommand.list) {
-		return listInstances(state);
+		continuation = listInstances;
 	} else if (*state.subcommand.kill) {
-		return killInstances(state);
+		continuation = killInstances;
 	} else if (*state.subcommand.msg || *state.ipc.ipc) {
-		return ipcCommand(state);
+		continuation = ipcCommand;
 	} else {
 		if (strcmp(qVersion(), QT_VERSION_STR) != 0) {
 			qWarning() << "\033[31mQuickshell was built against Qt" << QT_VERSION_STR
@@ -579,7 +584,9 @@ int runCommand(int argc, char** argv) {
 		return launchFromCommand(state);
 	}
 
-	return 0;
+	int qArgc = 1;
+	auto coreApp = QCoreApplication(qArgc, argv);
+	return continuation(state);
 }
 
 QString getDisplayConnection() {
