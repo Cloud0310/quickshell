@@ -22,6 +22,7 @@
 #include "../core/logging.hpp"
 #include "../core/paths.hpp"
 #include "../core/plugin.hpp"
+#include "../core/qmlglobal.hpp"
 #include "../core/rootwrapper.hpp"
 #include "../ipc/ipc.hpp"
 #include "build.hpp"
@@ -298,6 +299,10 @@ int launch(const LaunchArgs& args, char** argv) {
 		                              : QQmlDebuggingEnabler::DoNotWaitForClient;
 		QQmlDebuggingEnabler::startTcpDebugServer(args.debugPort, wait);
 	}
+
+	// This needs to run early to get the first connection to QGuiApplication::screenAdded() in Qs.
+	// If we don't do that, attempts to get a QuickshellScreenInfo from a QScreen will fail in screenAdded bindings.
+	QuickshellTracked::init();
 
 	QsEnginePlugin::initPlugins();
 
