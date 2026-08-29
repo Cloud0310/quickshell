@@ -62,6 +62,10 @@ EngineGeneration::EngineGeneration(const QDir& rootPath, QmlScanner scanner)
 EngineGeneration::EngineGeneration(): EngineGeneration(QDir(), QmlScanner()) {}
 
 EngineGeneration::~EngineGeneration() {
+	for (auto* extension: this->extensions.values()) {
+		delete extension;
+	}
+
 	if (this->engine != nullptr) {
 		qFatal() << this << "destroyed without calling destroy()";
 	}
@@ -76,10 +80,6 @@ void EngineGeneration::destroy() {
 		QObject::disconnect(this->watcher, nullptr, this, nullptr);
 		this->watcher->deleteLater();
 		this->watcher = nullptr;
-	}
-
-	for (auto* extension: this->extensions.values()) {
-		delete extension;
 	}
 
 	if (this->root != nullptr) {
